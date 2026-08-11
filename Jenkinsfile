@@ -17,6 +17,7 @@ pipeline {
             steps {
                 echo "Testing the application..."
                 sh """
+                    docker rm -f temp-test || true
                     docker run -d --name temp-test -p 8082:80 ${IMAGE_NAME}:${BUILD_TAG}
                     sleep 3
                     curl -sI http://localhost:8082 | grep "200 OK" || (docker rm -f temp-test && exit 1)
