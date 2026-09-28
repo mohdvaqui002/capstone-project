@@ -1,3 +1,3 @@
-FROM hshar/webapp:latest
-COPY website-master/ /var/www/html/
+FROM nginx:1.28-alpine
+COPY website-master/ /usr/share/nginx/html/
 EXPOSE 80

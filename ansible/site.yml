@@ -1,0 +1,89 @@
+---
+- name: Configure the Jenkins controller
+  hosts: jenkins
+  become: true
+  tasks:
+    - name: Install Java, Jenkins and Docker
+      ansible.builtin.script: files/jenkins-setup.sh
+      args:
+        creates: /var/lib/capstone/jenkins-prepared
+
+- name: Configure Kubernetes nodes
+  hosts: kubernetes
+  become: true
+  tasks:
+    - name: Prepare runtime, kernel and Kubernetes packages
+      ansible.builtin.script: "files/node-setup.sh {{ private_ip }}"
+      args:
+        creates: /var/lib/capstone/node-prepared
+
+- name: Initialize the control plane
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: Install Java on the third machine specified by the brief
+      ansible.builtin.apt:
+        name: openjdk-21-jre-headless
+        state: present
+    - name: Initialize kubeadm once
+      ansible.builtin.command: >-
+        kubeadm init --apiserver-advertise-address={{ private_ip }}
+        --apiserver-cert-extra-sans={{ public_ip }}
+        --pod-network-cidr=10.244.0.0/16
+        --cri-socket=unix:///run/containerd/containerd.sock
+      args:
+        creates: /etc/kubernetes/admin.conf
+      no_log: true
+    - name: Create Ubuntu kubectl directory
+      ansible.builtin.file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0700'
+    - name: Configure kubectl for Ubuntu user
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/ubuntu/.kube/config
+        remote_src: true
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+    - name: Download pinned Flannel network
+      ansible.builtin.get_url:
+        url: https://github.com/flannel-io/flannel/releases/download/v0.28.9/kube-flannel.yml
+        dest: /root/kube-flannel.yml
+        mode: '0600'
+    - name: Apply Flannel networking
+      ansible.builtin.command: kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /root/kube-flannel.yml
+      register: flannel
+      changed_when: "'created' in flannel.stdout or 'configured' in flannel.stdout"
+    - name: Generate short-lived worker join command
+      ansible.builtin.command: kubeadm token create --ttl 30m --print-join-command
+      register: join_command
+      changed_when: false
+      no_log: true
+
+- name: Join workers
+  hosts: workers
+  become: true
+  tasks:
+    - name: Join the existing control plane once
+      ansible.builtin.command: "{{ hostvars[groups['control_plane'][0]].join_command.stdout }} --cri-socket=unix:///run/containerd/containerd.sock"
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+      no_log: true
+
+- name: Verify Kubernetes
+  hosts: control_plane
+  become: true
+  tasks:
+    - name: Wait for all nodes to become Ready
+      ansible.builtin.command: kubectl --kubeconfig=/etc/kubernetes/admin.conf wait --for=condition=Ready nodes --all --timeout=240s
+      changed_when: false
+    - name: Show node inventory
+      ansible.builtin.command: kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes -o wide
+      register: nodes
+      changed_when: false
+    - ansible.builtin.debug:
+        var: nodes.stdout_lines

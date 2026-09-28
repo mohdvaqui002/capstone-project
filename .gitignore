@@ -1,0 +1,10 @@
+.terraform/
+*.tfstate*
+*.tfplan
+*.tfvars
+*.pem
+*.key
+*kubeconfig*
+inventory.ini
+secrets/
+__pycache__/
