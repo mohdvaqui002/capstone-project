@@ -17,7 +17,7 @@ jobs:
           docker build -t capstone-ci .
           trap 'docker rm -f capstone-ci >/dev/null 2>&1 || true' EXIT
           docker run -d --name capstone-ci -p 127.0.0.1:8080:80 capstone-ci
-          curl --fail --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:8080/ | grep -q 'Hello world!'
+          curl --fail --retry 10 --retry-connrefused --retry-all-errors --retry-delay 2 http://127.0.0.1:8080/ | grep -q 'Hello world!'
           curl --fail http://127.0.0.1:8080/images/github3.jpg -o /dev/null
       - name: Verify release calendar
         run: |

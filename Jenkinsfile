@@ -29,7 +29,7 @@ name="capstone-test-${BUILD_NUMBER}"
 trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
 docker run -d --name "$name" -p 127.0.0.1::80 "$IMAGE_NAME:$IMAGE_TAG"
 port=$(docker inspect -f '{{(index (index .NetworkSettings.Ports "80/tcp") 0).HostPort}}' "$name")
-curl --fail --retry 10 --retry-connrefused --retry-delay 2 "http://127.0.0.1:$port/" | grep -q 'Hello world!'
+curl --fail --retry 10 --retry-connrefused --retry-all-errors --retry-delay 2 "http://127.0.0.1:$port/" | grep -q 'Hello world!'
 curl --fail "http://127.0.0.1:$port/images/github3.jpg" -o /dev/null
 bash scripts/is-release-day.sh 2026-10-25
 if bash scripts/is-release-day.sh 2026-10-24; then exit 1; fi
