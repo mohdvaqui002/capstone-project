@@ -18,7 +18,7 @@ Checked during the 2026-09-28/29 setup session.
 | Jenkins RBAC | Can patch capstone deployments; cannot read kube-system secrets |
 | Release gate | Positive/negative date tests passed; real runs outside the 25th skipped production deployment |
 
-The temporary capstone-validation namespace was deleted after verification, freeing NodePort 30008. A production release has not yet occurred. Routine releases are configured for the 25th of each month in Asia/Kolkata; an initial off-calendar production demo requires an explicit exception. Do not describe the website as currently deployed to production.
+The temporary capstone-validation namespace was deleted after verification. On 2026-09-29 the user explicitly approved a one-time initial production release. The tested image was deployed to the capstone namespace: 2/2 replicas Ready on separate workers, NodePort 30008, and HTTP 200 with expected content through both worker endpoints. Routine Jenkins releases remain restricted to the 25th in Asia/Kolkata; no permanent bypass was added.
 
 This project interprets the brief's CodeBuild wording as the Jenkins build stage. AWS CodeBuild is not provisioned. The repository uses main in place of master. These interpretations should be confirmed with the assessor if literal naming/services are required.
 
